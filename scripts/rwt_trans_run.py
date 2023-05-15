@@ -3,7 +3,7 @@ from setting import get_wivio_setting, get_rwt_setting
 import os
 import sys
 
-project_path = 'D:/study/postgraduate/study_project/wavelet_wifi/server/new_lanbo'
+project_path = '/home/lanbo/RWT_wifi_code/'
 sys.path.append(project_path)
 
 
@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
             model_setting = get_rwt_setting(model_set)
 
-            config = load_setting(r'D:\study\postgraduate\study_project\wavelet_wifi\server\new_lanbo\setting.json')
+            config = load_setting(r'/home/lanbo/RWT_wifi_code/basic_setting.json')
 
             config['datetime'] = get_time()
 
@@ -45,6 +45,6 @@ if __name__ == '__main__':
             config['model']['model_setting'] = model_setting
 
             # write_setting(config, os.path.join(config['path']['result_path'], 'setting.json'))
-            write_setting(config, r'D:\study\postgraduate\study_project\wavelet_wifi\server\new_lanbo')
+            write_setting(config, r'/home/lanbo/RWT_wifi_code/setting.json')
 
 

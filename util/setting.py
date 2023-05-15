@@ -8,8 +8,8 @@ def load_setting(url: str)->dict:
         return data
 
 def write_setting(data, save_path=''):
-    path = os.path.join(save_path, 'setting.json')
-    with open(path, "w") as f:
+    # path = os.path.join(save_path, 'setting.json')
+    with open(save_path, "w") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 def update_time(config: dict, type='datetime')->dict:
