@@ -21,9 +21,9 @@
     "num_epoch": 500,
     "opt_method": "adamw",
     "lr_rate": 0.0002,
-    "weight_decay": 0.0001,
     "lr_rate_adjust_epoch": 50,
     "lr_rate_adjust_factor": 0.5,
+    "weight_decay": 0.0001,
     "save_epoch": 501,
     "eval_epoch": 501,
     "patience": 0

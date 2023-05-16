@@ -1,7 +1,7 @@
-from .dataset_setting import get_wivio_setting
-from .model_setting import get_rwt_setting
+from .dataset_setting import get_dataset_setting
+from .model_setting import get_model_setting
 
 __all__ = [
-    get_wivio_setting,
-    get_rwt_setting,
+    get_dataset_setting,
+    get_model_setting,
 ]
