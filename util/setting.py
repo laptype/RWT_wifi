@@ -48,10 +48,10 @@ def get_log_path(config: dict, day: str, dataset_set: str, model_set: str)->dict
     return log_path
 
 def get_result_path(config: dict, day: str, dataset_set: str, model_set: str)->os.path:
-    result_path= os.path.join(config['path']['basic_path']['result_path'], day)
+    result_path = os.path.join(config['path']['basic_path']['result_path'], day)
     if not os.path.exists(result_path):
         os.makedirs(result_path)
-    result_path  = os.path.join(result_path, f"{dataset_set}_{model_set}")
+    result_path = os.path.join(result_path, f"{dataset_set}_{model_set}")
     return result_path
 
 class Setting():

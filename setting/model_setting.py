@@ -1,7 +1,7 @@
 
 
 def get_model_setting(model_set:str)->dict:
-    if model_set.startswith('rwt'):
+    if model_set.startswith('RWT'):
         return get_rwt_setting(model_set)
 
 def get_rwt_setting(model_set:str)->dict:
@@ -10,7 +10,7 @@ def get_rwt_setting(model_set:str)->dict:
     '''
     backbone_name, atten, layer, scale, patch_size, dropout, droppath, *others = model_set.split('_')
 
-    model_setting = {
+    backbone_setting = {
         "backbone_name": backbone_name,
         "attn_type": atten,
         "attn_type_layer": int(layer),
@@ -18,6 +18,12 @@ def get_rwt_setting(model_set:str)->dict:
         "patch_size": int(patch_size),
         "dropout": float(dropout),
         "droppath": float(droppath),
-        "others": {}
+        "others": {
+            "high_ratio": float(1.0)
+        }
     }
-    return model_setting
+
+    if len(others) != 0:
+        backbone_setting["others"]["high_ratio"] = float(others[0])
+
+    return backbone_setting

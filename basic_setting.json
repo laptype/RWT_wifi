@@ -13,7 +13,17 @@
     }
   },
   "dataset": {},
-  "model": {},
+  "model": {
+    "backbone_name": "",
+    "head_name": "",
+    "strategy_name": "",
+    "backbone_setting": {},
+    "head_setting": {},
+    "strategy_setting": {
+      "strategy_name": "",
+      "calc_data": "raw"
+    }
+  },
   "training": {},
   "learning": {
     "train_batch_size": 64,

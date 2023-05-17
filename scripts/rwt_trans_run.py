@@ -2,9 +2,10 @@ from util import load_setting, update_time, get_time, get_log_path, get_result_p
 from setting import get_dataset_setting, get_model_setting
 import os
 import sys
-
+import logging
 project_path = '/home/lanbo/RWT_wifi_code/'
 sys.path.append(project_path)
+
 
 
 if __name__ == '__main__':
@@ -43,7 +44,7 @@ if __name__ == '__main__':
             config['dataset']['dataset_setting'] = dataset_setting
 
             config['model']['backbone_name'] = model_setting['backbone_name']
-            config['model']['model_setting'] = model_setting
+            config['model']['backbone_setting'] = model_setting
 
             config['learning']['train_batch_size'] = int(batch_size)
             config['learning']['test_batch_size'] = int(batch_size)
