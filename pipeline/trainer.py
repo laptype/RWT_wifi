@@ -179,40 +179,12 @@ class Trainer(object):
             for data in tbar:
 
                 data_aug = data.copy() # 浅拷贝
-
+                # train ---------------------------------------------------------------------------
                 data = self._to_var(data, device)
                 train_loss += self._train_one_step(data)
 
-                rand_i = np.random.rand()
-
-                if self.aug == 'None': data_aug['data'] = data_aug['data'].numpy()
-                elif self.aug == 'i-jitter': data_aug['data'] = augmentation2.jitter(data_aug['data'].numpy())
-                elif self.aug == 'i-window-s': data_aug['data'] = augmentation2.window_slice(data_aug['data'].numpy())
-                elif self.aug == 'i-window-w': data_aug['data'] = augmentation2.window_warp(data_aug['data'].numpy())
-                elif self.aug == 'i-magwarp': data_aug['data'] = augmentation2.magnitude_warp(data_aug['data'].numpy())
-                elif self.aug == 'i-scaling': data_aug['data'] = augmentation2.scaling(data_aug['data'].numpy())
-                elif self.aug == 'i-window-w-j':
-                    if rand_i > 0.4:
-                        data_aug['data'] = augmentation2.window_warp(data_aug['data'].numpy())
-                    else:
-                        data_aug['data'] = augmentation2.jitter(data_aug['data'].numpy())
-                elif self.aug == 'i-window-w-m-j':
-                    if rand_i < 0.3:
-                        data_aug['data'] = augmentation2.jitter(data_aug['data'].numpy())
-                    elif rand_i > 0.66:
-                        data_aug['data'] = augmentation2.window_warp(data_aug['data'].numpy())
-                    else:
-                        data_aug['data'] = augmentation2.magnitude_warp(data_aug['data'].numpy())
-                elif self.aug == 'i-window-w-s':
-                    if rand_i > 0.5:
-                        data_aug['data'] = augmentation2.window_warp(data_aug['data'].numpy())
-                    else:
-                        data_aug['data'] = augmentation2.window_slice(data_aug['data'].numpy())
-
-
-
-                data_aug['data'] = torch.from_numpy(data_aug['data']).float()
-
+                # train with aug ---------------------------------------------------------------------------
+                self.augment(data_aug)
                 data_aug = self._to_var(data_aug, device)
                 train_loss += self._train_one_step(data_aug)
 
@@ -283,6 +255,42 @@ class Trainer(object):
 
         cleanup()
         print('dist.destroy_process_group()')
+
+    def augment(self, data_aug)->None:
+        rand_i = np.random.rand()
+
+        if self.aug == 'None':
+            data_aug['data'] = data_aug['data'].numpy()
+        elif self.aug == 'i-jitter':
+            data_aug['data'] = augmentation2.jitter(data_aug['data'].numpy())
+        elif self.aug == 'i-window-s':
+            data_aug['data'] = augmentation2.window_slice(data_aug['data'].numpy())
+        elif self.aug == 'i-window-w':
+            data_aug['data'] = augmentation2.window_warp(data_aug['data'].numpy())
+        elif self.aug == 'i-magwarp':
+            data_aug['data'] = augmentation2.magnitude_warp(data_aug['data'].numpy())
+        elif self.aug == 'i-scaling':
+            data_aug['data'] = augmentation2.scaling(data_aug['data'].numpy())
+        elif self.aug == 'i-window-w-j':
+            if rand_i > 0.4:
+                data_aug['data'] = augmentation2.window_warp(data_aug['data'].numpy())
+            else:
+                data_aug['data'] = augmentation2.jitter(data_aug['data'].numpy())
+        elif self.aug == 'i-window-w-m-j':
+            if rand_i < 0.3:
+                data_aug['data'] = augmentation2.jitter(data_aug['data'].numpy())
+            elif rand_i > 0.66:
+                data_aug['data'] = augmentation2.window_warp(data_aug['data'].numpy())
+            else:
+                data_aug['data'] = augmentation2.magnitude_warp(data_aug['data'].numpy())
+        elif self.aug == 'i-window-w-s':
+            if rand_i > 0.5:
+                data_aug['data'] = augmentation2.window_warp(data_aug['data'].numpy())
+            else:
+                data_aug['data'] = augmentation2.window_slice(data_aug['data'].numpy())
+
+        data_aug['data'] = torch.from_numpy(data_aug['data']).float()
+
 
     def set_seed(self, seed):
         torch.manual_seed(seed)
