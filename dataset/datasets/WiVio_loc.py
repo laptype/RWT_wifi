@@ -9,6 +9,38 @@ from dataset import Dataset_temple
 import logging
 logger = logging.getLogger( )
 
+class WiVioFT(Dataset_temple):
+    def __init__(self, config, is_test):
+        super(WiVioFT, self).__init__(config["path"]["datasource_path"], config["path"]["result_path"])
+        self.config = config
+        self.loc = config["dataset"]["dataset_setting"]["loc"]
+        self.pre_ratio = config["dataset"]["dataset_setting"]["ratio"]
+        self.is_test = is_test
+
+    def load_wifi_Vio_data(self):
+
+        train_data = {"data_path": os.path.join(self.datasource_path, 'data'),
+                      "list_path": os.path.join(self.datasource_path, f'ft_loc_{self.loc}_{"%.1f"%(self.pre_ratio)}_train_list.csv'),
+                      "save_path": os.path.join(self.save_path, 'Train_dataset', 'train_dataset.csv')}
+        test_data = {"data_path": os.path.join(self.datasource_path, 'data'),
+                     "list_path": os.path.join(self.datasource_path, f'ft_loc_{self.loc}_{"%.1f"%(self.pre_ratio)}_test_list.csv'),
+                     "save_path": os.path.join(self.save_path, 'Test_dataset', 'test_dataset.csv')}
+
+        for data in [train_data, test_data]:
+            if os.path.exists(data['save_path']):
+                os.remove(data['save_path'])
+
+        if not os.path.exists(os.path.join(self.save_path, 'Test_dataset')):
+            os.makedirs(os.path.join(self.save_path, 'Test_dataset'))
+        if not os.path.exists(os.path.join(self.save_path, 'Train_dataset')):
+            os.makedirs(os.path.join(self.save_path, 'Train_dataset'))
+
+        return train_data, test_data
+
+    def get_Dataset(self):
+        train_data, test_data = self.load_wifi_Vio_data()
+        train_dataset, test_dataset = WiFiVioDataset(train_data, self.is_test), WiFiVioDataset(test_data, self.is_test)
+        return train_dataset, test_dataset
 
 class WiVioLoc(Dataset_temple):
     def __init__(self, config, is_test):
@@ -26,14 +58,14 @@ class WiVioLoc(Dataset_temple):
                      "list_path": os.path.join(self.datasource_path, f'loc_{self.loc}_test_list.csv'),
                      "save_path": os.path.join(self.save_path, 'Test_dataset', 'test_dataset.csv')}
 
+        for data in [train_data, test_data]:
+            if os.path.exists(data['save_path']):
+                os.remove(data['save_path'])
+
         if not os.path.exists(os.path.join(self.save_path, 'Test_dataset')):
             os.makedirs(os.path.join(self.save_path, 'Test_dataset'))
         if not os.path.exists(os.path.join(self.save_path, 'Train_dataset')):
             os.makedirs(os.path.join(self.save_path, 'Train_dataset'))
-
-        for data in [train_data, test_data]:
-            if os.path.exists(data['save_path']):
-                os.remove(data['save_path'])
 
         return train_data, test_data
 
@@ -42,17 +74,37 @@ class WiVioLoc(Dataset_temple):
         train_dataset, test_dataset = WiFiVioDataset(train_data, self.is_test), WiFiVioDataset(test_data, self.is_test)
         return train_dataset, test_dataset
 
-class WiVio():
+
+
+class WiVio(Dataset_temple):
     def __init__(self, config, is_test):
-        self.datasource_path = config["path"]["datasource_path"]
-        self.save_path = config["path"]["result_path"]
+        super(WiVio, self).__init__(config["path"]["datasource_path"], config["path"]["result_path"])
+        self.config = config
         self.is_test = is_test
 
     def load_wifi_Vio_data(self):
-        pass
+        train_data = {"data_path": os.path.join(self.datasource_path, 'train'),
+                      "list_path": os.path.join(self.datasource_path, f'train_list.csv'),
+                      "save_path": os.path.join(self.save_path, 'Train_dataset', 'train_dataset.csv')}
+        test_data = {"data_path": os.path.join(self.datasource_path, 'test'),
+                     "list_path": os.path.join(self.datasource_path, f'test_list.csv'),
+                     "save_path": os.path.join(self.save_path, 'Test_dataset', 'test_dataset.csv')}
+
+        for data in [train_data, test_data]:
+            if os.path.exists(data['save_path']):
+                os.remove(data['save_path'])
+
+        if not os.path.exists(os.path.join(self.save_path, 'Test_dataset')):
+            os.makedirs(os.path.join(self.save_path, 'Test_dataset'))
+        if not os.path.exists(os.path.join(self.save_path, 'Train_dataset')):
+            os.makedirs(os.path.join(self.save_path, 'Train_dataset'))
+
+        return train_data, test_data
 
     def get_Dataset(self):
-        pass
+        train_data, test_data = self.load_wifi_Vio_data()
+        train_dataset, test_dataset = WiFiVioDataset(train_data, self.is_test), WiFiVioDataset(test_data, self.is_test)
+        return train_dataset, test_dataset
 
 class WiFiVioDataset(Dataset):
     def __init__(self, data, is_test: bool):

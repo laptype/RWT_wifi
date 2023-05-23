@@ -9,7 +9,9 @@ class WiVio_cls_config(ModelConfig):
 class WiVio_cls(nn.Module):
     def __init__(self, hidden_dim, config: WiVio_cls_config):
         super(WiVio_cls, self).__init__()
+        self.hidden_dim = hidden_dim
         self.model_name = config.model_name
+        self.label_n_classes = config.label_n_classes
         self.label_head = SimpleSpanCLSHead(hidden_dim, config.label_n_classes)
 
     def forward(self, features):

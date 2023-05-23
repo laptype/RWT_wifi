@@ -1,5 +1,5 @@
 from util import load_setting, update_time, get_time, get_log_path, get_result_path, get_day, write_setting
-from setting import get_dataset_setting, get_model_setting
+from setting import get_dataset_setting, get_model_setting, Run_config
 from torch.utils.data.dataloader import DataLoader
 from torch.autograd import Variable
 import os
@@ -44,6 +44,15 @@ def temp_test(config):
 
     write_setting(config, os.path.join(config["path"]["result_path"], 'setting.json'))
 
+def get_ddp_config(devices:list):
+    nproc_per_node = len(devices)
+    master_port = '29501'
+    ddp_devices = ''
+    for i in range(nproc_per_node-1):
+        ddp_devices += f'{devices[i]},'
+    ddp_devices += f'{devices[nproc_per_node-1]}'
+
+    return ddp_devices, master_port, nproc_per_node
 
 if __name__ == '__main__':
 
@@ -73,6 +82,9 @@ if __name__ == '__main__':
 
             config['datetime'] = get_time()
 
+            config["training"]["DDP"]["enable"] = True
+            config["training"]["DDP"]["devices"] = [2, 3]
+
             config['path']['datasource_path'] = "/home/lanbo/dataset/wifi_violence_processed_loc_class/"
             config['path']['log_path']      = get_log_path(config, day, dataset_str, model_set)
             config['path']['result_path']   = get_result_path(config, day, dataset_str, model_set)
@@ -89,8 +101,27 @@ if __name__ == '__main__':
             config['learning']['train_batch_size'] = int(batch_size)
             config['learning']['test_batch_size'] = int(batch_size)
 
-            # write_setting(config, os.path.join(config['path']['result_path'], 'setting.json'))
-            # write_setting(config, r'/home/lanbo/RWT_wifi_code/setting.json')
-            temp_test(config)
+            config["learning"]["num_epoch"] = 500
+
+
+            write_setting(config, os.path.join(config['path']['result_path'], 'setting.json'))
+
+            # run = Run_config(config, "train")
+            #
+            # os.system(
+            #     f"CUDA_VISIBLE_DEVICES={run.ddp_devices} {run.python_path} -m torch.distributed.launch --nproc_per_node {run.nproc_per_node} "
+            #     f"--master_port='29501' --use_env "
+            #     f"{run.main_path} --is_train true --config_path {run.config_path} "
+            #     f"> {run.log_path}"
+            # )
+
+            run = Run_config(config, "test")
+
+            os.system(
+                f"CUDA_VISIBLE_DEVICES={run.ddp_devices} {run.python_path} -m torch.distributed.launch --nproc_per_node {run.nproc_per_node} "
+                f"--master_port='29501' --use_env "
+                f"{run.main_path} --config_path {run.config_path} "
+                f"> {run.log_path}"
+            )
 
 

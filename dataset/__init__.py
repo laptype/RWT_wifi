@@ -1,8 +1,8 @@
 from .Dataset_temple import Dataset_temple
-from .datasets import WiVioLoc, WiVio
+from .datasets import WiVioLoc, WiVio, WiVioFT
 
 
 __all__ = [
     Dataset_temple,
-    WiVioLoc, WiVio
+    WiVioLoc, WiVio, WiVioFT
 ]

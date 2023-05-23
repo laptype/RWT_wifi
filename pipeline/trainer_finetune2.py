@@ -1,3 +1,4 @@
+import logging
 import os.path
 from tqdm import tqdm
 import torch
@@ -9,13 +10,17 @@ from torch.utils.tensorboard import SummaryWriter
 import random
 from util import init_distributed_mode, dist, cleanup, reduce_value, augmentation2
 import numpy as np
-
+from .tester import Tester
+import logging
+logger = logging.getLogger( )
 
 class Trainer(object):
     def __init__(self,
                  strategy: nn.Module,
-                 train_dataset: Dataset,
-                 eval_dataset: Dataset,
+                 head: nn.Module,
+                 pre_train_dataset: Dataset,
+                 pre_test_dataset: Dataset,
+                 pre_train_ratio: float,
                  batch_size: int,
                  num_epoch: int,
                  opt_method: str,
@@ -28,31 +33,36 @@ class Trainer(object):
                  patience: int,
                  check_point_path: os.path,
                  use_gpu=True,
-                 backbone_name='',
+                 backbone_setting='',
+                 pre_train_path='',
                  aug = 'None'):
         super(Trainer, self).__init__()
         # model--------------------------------------------------------------------
         self.strategy = strategy
+        self.head = head
         # dataset -----------------------------------------------------------------
-        self.train_dataset = train_dataset
-        self.eval_dataset = eval_dataset
+        self.train_dataset = pre_train_dataset
+        self.eval_dataset = pre_test_dataset
+        self.pre_train_ratio = pre_train_ratio
         # -------------------------------------------------------------------------
 
         self.batch_size = batch_size
-        self.num_epoch = num_epoch
+        self.num_epoch  = num_epoch
         # learning config ---------------------------------------------------------
         self.opt_method = opt_method
-        self.lr_rate = lr_rate
-        self.lr_rate_adjust_epoch = lr_rate_adjust_epoch
+        self.lr_rate    = lr_rate
+        self.lr_rate_adjust_epoch  = lr_rate_adjust_epoch
         self.lr_rate_adjust_factor = lr_rate_adjust_factor
         self.weight_decay = weight_decay
 
         # training setting --------------------------------------------------------
         self.save_epoch = save_epoch
         self.eval_epoch = eval_epoch
-        self.patience = patience
-        self.use_gpu = use_gpu
+        self.patience   = patience
+        self.use_gpu    = use_gpu
         self.check_point_path = check_point_path
+        self.pre_train_path = pre_train_path
+
         # -------------------------------------------------------------------------
 
         self.writer = SummaryWriter(os.path.join(self.check_point_path, f'tb_{self.strategy.backbone.get_model_name()}'))
@@ -65,10 +75,16 @@ class Trainer(object):
 
         self.device = 'cuda'
         # -------------------------------------------------------------------------
-        self.backbone_name = backbone_name
+        self.backbone_setting = backbone_setting
         self.aug = aug
 
+
     def _init_optimizer(self):
+        # 列表fc_params_id中的每一个元素对应fc层中的参数的地址
+        # head_params_id = list(map(id, self.strategy.module.head.parameters()))  # 返回的是parameters的内存地址
+        # 将resnet18_ft中所有的参数过滤掉fc层，过滤条件就是采用内存地址，得到前面卷积层的参数
+        # base_params = filter(lambda p: id(p) not in head_params_id, self.strategy.module.parameters())
+        # base_params = filter(lambda p: p.requires_grad, self.strategy.module.parameters())
         params = [
             {'params': self.strategy.module.backbone.parameters()},
             {'params': self.strategy.module.head.parameters()},
@@ -88,6 +104,7 @@ class Trainer(object):
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer,
                                                          self.lr_rate_adjust_epoch,
                                                          self.lr_rate_adjust_factor)
+
 
     def _to_var(self, data: dict, device):
         if self.use_gpu:
@@ -113,12 +130,9 @@ class Trainer(object):
         return loss.item()
 
     def training(self):
-        self.set_seed(2023)
+        # 给不同的进程分配不同的、固定的随机数种子
+        self.set_seed(2023+self.rank)
         init_distributed_mode(args=self)
-
-        if self.use_gpu:
-            pass
-            # self.strategy = self.strategy.cuda()
 
         if self.rank == 0:
             print(f'world_size: {self.world_size}, gpu: {self.gpu}')
@@ -147,26 +161,44 @@ class Trainer(object):
                                                  pin_memory=True,
                                                  num_workers=nw)
         # load model ------------------------------------------------------------------------------------
-        self.strategy = self.strategy.to(device=device)
+        # self.strategy = self.strategy.to(device=device)
         # init model weight -----------------------------------------------------------------------------
+        # self.strategy.load_state_dict(torch.load(self.pre_train_path, map_location=device))
+        self.strategy.load_state_dict(torch.load(self.pre_train_path))
+
+        for param in self.strategy.parameters():
+            param.requires_grad = True
+        # logging.info(f'load new head: in_features: {self.head.hidden_dim} | class: {self.head.label_n_classes}')
+        # logging.info(f"fine-tuning train: {len(self.train_dataset)} : test {len(self.eval_dataset)}")
+
+        self.strategy.head = self.head
+        for param in self.strategy.head.parameters():
+            param.requires_grad = True
+
         if self.rank == 0:
             torch.save(self.strategy.state_dict(), os.path.join(self.check_point_path, "initial_weights.pt"))
-        # wait dist
+
         dist.barrier()
 
+        # load model to device ---------------------------------------------------------------------------
+
+        self.strategy = self.strategy.to(device=device)
+        # 同步参数
         self.strategy.load_state_dict(torch.load(os.path.join(self.check_point_path, "initial_weights.pt"),
                                                  map_location=device))
+
         # 转为DDP模型 --------------------------------------------------------------------------------------
         self.strategy = torch.nn.parallel.DistributedDataParallel(self.strategy, device_ids=[self.gpu])
 
+        # 优化器设置 ---------------------------------------------------------------------------------------
         self._init_optimizer()
-
-        patience_count = 0
-        mini_train_loss = float('inf')
+        #
+        # patience_count = 0
+        # mini_train_loss = float('inf')
         for epoch in range(self.num_epoch):
 
-            train_sampler.set_epoch(epoch) # 打乱分配的数据
-            np.random.seed(epoch)
+            train_sampler.set_epoch(epoch+self.rank) # 打乱分配的数据
+            np.random.seed(epoch+self.rank)
             self.strategy.train()
             if self.rank == 0:
                 log_info = 'Epoch: %d. ' % (epoch + 1)
@@ -179,7 +211,7 @@ class Trainer(object):
             for data in tbar:
 
                 data_aug = data.copy() # 浅拷贝
-                # train ---------------------------------------------------------------------------
+                # train ------------------------------------------------------------------------------------
                 data = self._to_var(data, device)
                 train_loss += self._train_one_step(data)
 
@@ -189,72 +221,43 @@ class Trainer(object):
                 train_loss += self._train_one_step(data_aug)
 
                 if self.rank ==0:
-                    tbar.set_description('%s: Epoch: %d: ' % (self.backbone_name,epoch + 1))
+                    tbar.set_description('%s: Epoch: %d: ' % (self.backbone_setting,epoch + 1))
                     tbar.set_postfix(train_loss=train_loss)
+
 
             if self.rank==0:
                 tbar.close()
 
             # 等待所有进程计算完毕
             torch.cuda.synchronize(device)
-
             self.scheduler.step()
+
+            # 检测参数不变
+            # if self.rank == 0:
+            #     params = list(self.strategy.module.named_parameters())
+            #     logging.info(params[0])   前面的参数
+            #     logging.info(params[-1])  head2 的参数
+            # if (epoch + 1) % self.eval_epoch == 0:
+            #     self.strategy.
 
             if self.rank == 0:
                 log_info += 'Train Loss: %f. ' % train_loss
                 self.writer.add_scalar("Train Loss", train_loss, epoch)
 
-            if (epoch + 1) % self.eval_epoch == 0:
-                self.strategy.eval()
-                with torch.no_grad():
-                    eval_loss = 0
-                    for data in tqdm(val_loader):
-                        data = self._to_var(data, device)
-                        eval_loss += self.strategy(data)
-                if self.rank == 0:
-                    log_info += 'Eval Loss: %f.' % eval_loss
-                    self.writer.add_scalar("Eval Loss", eval_loss, epoch)
-            if (epoch + 1) % self.save_epoch == 0:
-                if self.rank == 0:
-                    torch.save(self.strategy.module.state_dict(),
-                               os.path.join(self.check_point_path, '%s-%s-%d' % (self.strategy.module.backbone.get_model_name(),
-                                                                                 self.strategy.module.head.get_model_name(),
-                                                                                 epoch + 1)))
-            # 如果启用patience机制
-            if self.patience != 0:
-                if train_loss < mini_train_loss:
-                    mini_train_loss = train_loss
-                    if self.rank == 0:
-                        log_info += 'best-save '
-                        # torch.save(self.strategy.module.state_dict(),
-                        #            os.path.join(self.check_point_path, '%s-%s-best' % (self.strategy.module.backbone.get_model_name(),
-                        #                                                                self.strategy.module.head.get_model_name())))
-                    patience_count = 0
-                else:
-                    patience_count += 1
-
-                if self.rank == 0:
-                    log_info += 'Patience Count: %d.' % patience_count
-
-                if patience_count > self.patience:
-                    if self.rank == 0:
-                        log_info += 'Stop Early, patience has been running out.'
-                        print(log_info)
-                    break
             if self.rank == 0:
                 print(log_info)
 
         if self.rank == 0:
             torch.save(self.strategy.module.state_dict(),
-                       os.path.join(self.check_point_path, '%s-%s-final' % (self.strategy.module.backbone.get_model_name(),
-                                                                            self.strategy.module.head.get_model_name())))
+                       os.path.join(self.check_point_path, '%s-final-finetune-%.2f.pt' % (self.backbone_setting, self.pre_train_ratio)))
 
-        if self.rank == 0:
             if os.path.exists(os.path.join(self.check_point_path, "initial_weights.pt")) is True:
                 os.remove(os.path.join(self.check_point_path, "initial_weights.pt"))
 
         cleanup()
-        print('dist.destroy_process_group()')
+        print(f'rank: {self.rank} | gpu: {self.gpu}: dist.destroy_process_group()')
+        if self.rank==0:
+            logging.info(f'rank: {self.rank} | gpu: {self.gpu}: dist.destroy_process_group()')
 
     def augment(self, data_aug)->None:
         rand_i = np.random.rand()
@@ -299,3 +302,16 @@ class Trainer(object):
         np.random.seed(seed)
         random.seed(seed)
         torch.backends.cudnn.deterministic =True
+
+
+# def init_seeds(seed=0, cuda_deterministic=True):
+#     random.seed(seed)
+#     np.random.seed(seed)
+#     torch.manual_seed(seed)
+#     # Speed-reproducibility tradeoff https://pytorch.org/docs/stable/notes/randomness.html
+#     if cuda_deterministic:  # slower, more reproducible
+#         cudnn.deterministic = True
+#         cudnn.benchmark = False
+#     else:  # faster, less reproducible
+#         cudnn.deterministic = False
+#         cudnn.benchmark = True

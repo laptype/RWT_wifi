@@ -18,6 +18,7 @@ def get_rwt_setting(model_set:str)->dict:
         "patch_size": int(patch_size),
         "dropout": float(dropout),
         "droppath": float(droppath),
+        "backbone_setting": model_set,
         "others": {
             "high_ratio": float(1.0)
         }

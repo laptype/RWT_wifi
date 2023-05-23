@@ -35,23 +35,32 @@ def get_time()->str:
     current_minute = now.strftime('%M')
     return f"{current_month}-{current_day}-{current_hour}-{current_minute}"
 
-def get_log_path(config: dict, day: str, dataset_set: str, model_set: str)->dict:
+def get_log_path(config: dict, day: str, dataset_set: str, model_set: str, tag: str=None)->dict:
     log_path = os.path.join(config['path']['basic_path']['log_path'], day)
+    if tag is not None:
+        log_path = os.path.join(log_path, f"{tag}")
     if not os.path.exists(log_path):
         os.makedirs(log_path)
-    train_log_path  = os.path.join(log_path, f"{dataset_set}_{model_set}-TRAIN.log")
-    test_log_path   = os.path.join(log_path, f"{dataset_set}_{model_set}-TEST.log")
+    if config["training"]["pretrain"]["enable"]:
+        pretrain_ratio = config["training"]["pretrain"]["ratio"]
+        train_log_path = os.path.join(log_path, f"{dataset_set}_{model_set}_{pretrain_ratio}-TRAIN.log")
+        test_log_path = os.path.join(log_path, f"{dataset_set}_{model_set}_{pretrain_ratio}-TEST.log")
+    else:
+        train_log_path  = os.path.join(log_path, f"{dataset_set}_{model_set}-TRAIN.log")
+        test_log_path   = os.path.join(log_path, f"{dataset_set}_{model_set}-TEST.log")
     log_path = {
         'train': train_log_path,
         'test':  test_log_path
     }
     return log_path
 
-def get_result_path(config: dict, day: str, dataset_set: str, model_set: str)->os.path:
+def get_result_path(config: dict, day: str, dataset_set: str, model_set: str, tag: str=None)->os.path:
     result_path = os.path.join(config['path']['basic_path']['result_path'], day)
+    if tag is not None:
+        result_path = os.path.join(result_path, f"{tag}")
+    result_path = os.path.join(result_path, f"{dataset_set}_{model_set}")
     if not os.path.exists(result_path):
         os.makedirs(result_path)
-    result_path = os.path.join(result_path, f"{dataset_set}_{model_set}")
     return result_path
 
 class Setting():

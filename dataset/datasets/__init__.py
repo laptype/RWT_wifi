@@ -1,6 +1,6 @@
-from .WiVio_loc import WiVioLoc, WiVio
+from .WiVio_loc import WiVioLoc, WiVio, WiVioFT
 
 
 __all__ = [
-    WiVio, WiVioLoc
+    WiVio, WiVioLoc, WiVioFT
 ]

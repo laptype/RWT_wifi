@@ -18,20 +18,18 @@ if __name__ == '__main__':
     '''
     model_str_list = [
         ('RWT_waveres_8_s_16_0.4_0.1', 64),
+        # ('RWT_waveres_8_s_16_0.4_0.1', 64, 0.3),
+        # ('RWT_waveres_8_s_16_0.4_0.1', 64, 0.4),
     ]
 
     dataset_str_list = [
-        'WiVioLoc-1_i-window-w-s',
-        'WiVioLoc-2_i-window-w-s',
-        'WiVioLoc-3_i-window-w-s',
-        'WiVioLoc-4_i-window-w-s',
-        'WiVioLoc-5_i-window-w-s',
-        'WiVioLoc-6_i-window-w-s',
-        'WiVioLoc-7_i-window-w-s',
-        'WiVioLoc-8_i-window-w-s',
-        # 'WiVio_i-window-w-s'
+        'WiVioFT-1-0.1_i-window-w-s',
+        'WiVioFT-1-0.2_i-window-w-s',
+        'WiVioFT-1-0.3_i-window-w-s',
+        'WiVioFT-1-0.4_i-window-w-s',
+        'WiVioFT-1-0.5_i-window-w-s',
+        # 'WiVioLoc-1_i-window-w-s',
     ]
-
 
     for dataset_str in dataset_str_list:
         dataset_setting = get_dataset_setting(dataset_str)
@@ -45,10 +43,17 @@ if __name__ == '__main__':
 
             config['datetime'] = get_time()
 
+            # DPP setting =======================================================================================
             config["training"]["DDP"]["enable"] = True
             config["training"]["DDP"]["devices"] = [2, 3]
             test_gpu = 3
-            tag = f'pretrain-{dataset_setting["loc"]}'
+
+            # pretrain 设置 ======================================================================================
+            config["training"]["pretrain"]["enable"] = True
+            # config["training"]["pretrain"]["path"] = "/home/lanbo/RWT_wifi_code/result/05-18/WiVio_i-window-w-s_RWT_waveres_8_s_16_0.4_0.1/RWT_waveres_8_s_16_0.4_0.1-final"
+            config["training"]["pretrain"]["path"] = "/home/lanbo/wifi_wavelet_v2/result/checkpoint/WiVioAUG-1_i-window-w-s/vit_span_cls_raw/day_3_11/wavevit_waveres_8_s_16_0.4_0.1/wavevit_waveres_8_s_16_0.4_0.1-wifi_ar_span_cls-final"
+            config["training"]["pretrain"]["ratio"] = dataset_setting['ratio']
+            tag = 'pretrain'
 
             # 数据集路径 ==========================================================================================
             config['path']['datasource_path'] = "/home/lanbo/dataset/wifi_violence_processed_loc_class/"
@@ -74,7 +79,7 @@ if __name__ == '__main__':
             config['learning']['test_batch_size'] = int(batch_size)
 
             # epoch =============================================================================================
-            config["learning"]["num_epoch"] = 500
+            config["learning"]["num_epoch"] = 400
             # ===================================================================================================
 
             write_setting(config, os.path.join(config['path']['result_path'], 'setting.json'))
