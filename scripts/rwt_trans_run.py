@@ -17,18 +17,19 @@ if __name__ == '__main__':
         {backbone}_{atten}_{layer}_{scale}_{patch_size}_{dropout}_{droppath}
     '''
     model_str_list = [
-        ('RWT_waveres_8_s_16_0.4_0.1', 64),
+        ('RWT_waveres_8_s_16_0.4_0.1', 64, 300),
     ]
 
     dataset_str_list = [
-        'WiVioLoc-1_i-window-w-s',
-        'WiVioLoc-2_i-window-w-s',
-        'WiVioLoc-3_i-window-w-s',
-        'WiVioLoc-4_i-window-w-s',
-        'WiVioLoc-5_i-window-w-s',
-        'WiVioLoc-6_i-window-w-s',
-        'WiVioLoc-7_i-window-w-s',
-        'WiVioLoc-8_i-window-w-s',
+        'WiVioPerson-1_i-window-w-s'
+        # 'WiVioLoc-1_i-window-w-s',
+        # 'WiVioLoc-2_i-window-w-s',
+        # 'WiVioLoc-3_i-window-w-s',
+        # 'WiVioLoc-4_i-window-w-s',
+        # 'WiVioLoc-5_i-window-w-s',
+        # 'WiVioLoc-6_i-window-w-s',
+        # 'WiVioLoc-7_i-window-w-s',
+        # 'WiVioLoc-8_i-window-w-s',
         # 'WiVio_i-window-w-s'
     ]
 
@@ -38,6 +39,7 @@ if __name__ == '__main__':
         for model_str in model_str_list:
             model_set   = model_str[0]
             batch_size  = model_str[1]
+            epoch       = model_str[2]
 
             backbone_setting = get_model_setting(model_set)
 
@@ -48,7 +50,9 @@ if __name__ == '__main__':
             config["training"]["DDP"]["enable"] = True
             config["training"]["DDP"]["devices"] = [2, 3]
             test_gpu = 3
-            tag = f'pretrain-{dataset_setting["loc"]}'
+
+            # TAG ===============================================================================================
+            tag = f'person-{dataset_setting["person"]}-epoch-{epoch}'
 
             # 数据集路径 ==========================================================================================
             config['path']['datasource_path'] = "/home/lanbo/dataset/wifi_violence_processed_loc_class/"
@@ -72,9 +76,10 @@ if __name__ == '__main__':
 
             config['learning']['train_batch_size'] = int(batch_size)
             config['learning']['test_batch_size'] = int(batch_size)
+            config['learning']['save_epoch']  = 50
 
             # epoch =============================================================================================
-            config["learning"]["num_epoch"] = 500
+            config["learning"]["num_epoch"] = epoch
             # ===================================================================================================
 
             write_setting(config, os.path.join(config['path']['result_path'], 'setting.json'))

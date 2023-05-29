@@ -21,6 +21,8 @@ def test(config: dict, Tester=Tester_gpu):
         strategy.load_state_dict(torch.load(os.path.join(config["path"]["result_path"],
                                                          '%s-final-finetune-%.2f.pt' % (config["model"]["backbone_setting"]["backbone_setting"],
                                                                                         config["training"]["pretrain"]["ratio"]))))
+    elif config["testing"]["Specified"]:
+        strategy.load_state_dict(torch.load(config["testing"]["path"]))
     else:
         strategy.load_state_dict(torch.load(os.path.join(config["path"]["result_path"],
                                                          "%s-final" % (config["model"]["backbone_setting"]["backbone_setting"]))))

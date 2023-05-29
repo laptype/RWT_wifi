@@ -23,15 +23,18 @@ if __name__ == '__main__':
     ]
 
     dataset_str_list = [
-        'WiVioFT-1-0.2_i-window-w-s',
-        # 'WiVioFT-1-0.2_i-window-w-s',
-        # 'WiVioFT-1-0.3_i-window-w-s',
-        # 'WiVioFT-1-0.4_i-window-w-s',
-        # 'WiVioFT-1-0.5_i-window-w-s',
-        # 'WiVioLoc-1_i-window-w-s',
+        # ('WiVioLoc-1_i-window-w-s', "/home/lanbo/RWT_wifi_code/result/05-25/pretrain-2/WiVioFT-2-0.2_i-window-w-s_RWT_waveres_8_s_16_0.4_0.1/RWT_waveres_8_s_16_0.4_0.1-final-finetune-0.20.pt"),
+        # ('WiVioLoc-1_i-window-w-s', "/home/lanbo/RWT_wifi_code/result/05-25/pretrain/WiVioFT-1-0.2_i-window-w-s_RWT_waveres_8_s_16_0.4_0.1/RWT_waveres_8_s_16_0.4_0.1-final-finetune-0.20.pt"),
+        ('WiVioPerson-1_i-window-w-s', "50"),
+        ('WiVioPerson-1_i-window-w-s', "100"),
+        ('WiVioPerson-1_i-window-w-s', "150"),
+        ('WiVioPerson-1_i-window-w-s', "200"),
+        ('WiVioPerson-1_i-window-w-s', "250"),
+        ('WiVioPerson-1_i-window-w-s', "300")
     ]
 
     for dataset_str in dataset_str_list:
+        dataset_str, model_path = dataset_str
         dataset_setting = get_dataset_setting(dataset_str)
         for model_str in model_str_list:
             model_set   = model_str[0]
@@ -43,21 +46,16 @@ if __name__ == '__main__':
 
             config['datetime'] = get_time()
 
-            # DPP setting =======================================================================================
-            config["training"]["DDP"]["enable"] = True
-            config["training"]["DDP"]["devices"] = [2, 3]
             test_gpu = 3
+            tag = f'testing-epoch-{model_path}'
 
-            # pretrain 设置 ======================================================================================
-            config["training"]["pretrain"]["enable"] = True
-            # config["training"]["pretrain"]["path"] = "/home/lanbo/RWT_wifi_code/result/05-18/WiVio_i-window-w-s_RWT_waveres_8_s_16_0.4_0.1/RWT_waveres_8_s_16_0.4_0.1-final"
-            config["training"]["pretrain"]["path"] = "/home/lanbo/RWT_wifi_code/result/05-23/pretrain-1/WiVioLoc-1_i-window-w-s_RWT_waveres_8_s_16_0.4_0.1/RWT_waveres_8_s_16_0.4_0.1-final"
-            config["training"]["pretrain"]["ratio"] = dataset_setting['ratio']
-            tag = 'pretrain'
+            # TEST model path ===================================================================================
+            config["testing"]["Specified"] = True
+            config["testing"]["path"] = f"/home/lanbo/RWT_wifi_code/result/05-26/person-1-epoch-300/WiVioPerson-1_i-window-w-s_RWT_waveres_8_s_16_0.4_0.1/RWT_waveres_8_s_16_0.4_0.1-{model_path}"
+
 
             # 数据集路径 ==========================================================================================
             config['path']['datasource_path'] = "/home/lanbo/dataset/wifi_violence_processed_loc_class/"
-            # config['path']['datasource_path'] = '/home/lanbo/dataset/wifi_violence_processed_loc/'
 
             config['path']['log_path']      = get_log_path(config, day, dataset_str, model_set, tag)
             config['path']['result_path']   = get_result_path(config, day, dataset_str, model_set, tag)
@@ -79,20 +77,11 @@ if __name__ == '__main__':
             config['learning']['test_batch_size'] = int(batch_size)
 
             # epoch =============================================================================================
-            config["learning"]["num_epoch"] = 30
+            config["learning"]["num_epoch"] = 0
             # ===================================================================================================
 
             write_setting(config, os.path.join(config['path']['result_path'], 'setting.json'))
 
-            # TRAIN =============================================================================================
-            run = Run_config(config, "train")
-
-            os.system(
-                f"CUDA_VISIBLE_DEVICES={run.ddp_devices} {run.python_path} -m torch.distributed.launch --nproc_per_node {run.nproc_per_node} "
-                f"--master_port='29501' --use_env "
-                f"{run.main_path} --is_train true --config_path {run.config_path} "
-                f"> {run.log_path}"
-            )
             # TEST ==============================================================================================
             run = Run_config(config, "test")
 

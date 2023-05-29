@@ -41,6 +41,10 @@
       "ratio": 0.1
     }
   },
+  "testing": {
+    "Specified": false,
+    "path": ""
+  },
   "learning": {
     "train_batch_size": 64,
     "test_batch_size": 64,
